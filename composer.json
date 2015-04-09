@@ -1,0 +1,24 @@
+{
+    "name": "gburtini/acl",
+    "type": "library",
+    "description": "Dependency free, simple access control lists for PHP.",
+    "keywords": ["access control", "access", "acl", "security", "login", "user"],
+    "homepage": "http://github.com/gburtini/PHP-ACL",
+    "license": "GPL",
+    "authors": [
+        {
+            "name": "Giuseppe Burtini",
+            "email": "joe@truephp.com",
+            "homepage": "http://giuseppeburtini.com/",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.5.0"
+    },
+    "autoload": {
+        "psr-0": {
+            "gburtini\\ACL": "src"
+        }
+    }
+}
