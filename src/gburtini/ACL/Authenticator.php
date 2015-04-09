@@ -1,5 +1,5 @@
 <?php
-
+namespace gburtini\ACL;
 class Authenticator {
   // this is a class that users will extend (replace authenticate) to create authenticators.
   public function authenticate($user, $password, $roles=null) {

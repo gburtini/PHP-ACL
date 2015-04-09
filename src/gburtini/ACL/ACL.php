@@ -1,4 +1,6 @@
 <?php
+	namespace gburtini\ACL;
+
 	/* Access control list (ACL) functionality and privileges management.
 	 *
 	 * This solution is mostly based on Zend_Acl (c) Zend Technologies USA Inc. (http://www.zend.com), new BSD license

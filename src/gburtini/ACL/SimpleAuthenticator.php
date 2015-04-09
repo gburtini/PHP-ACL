@@ -1,4 +1,5 @@
 <?php
+  namespace gburtini\ACL;
   class SimpleAuthenticator extends Authenticator {
     private $users;
 

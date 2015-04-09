@@ -1,4 +1,5 @@
 <?php
+namespace gburtini\ACL;
 require_once dirname(__FILE__) . "/compatibility.php";
 /**
  * This class provides the basic login and permissions functionality for our role-based
