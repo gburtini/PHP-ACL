@@ -24,67 +24,66 @@ There are three parts to using this package.
 Each can be complex or simple depending on your use case.
 
 An Authenticator is a class that implements the method ``->authenticate($username, $password[, $roles])``, verifies the users name and password (and if specified, requested roles), and returns a unique identifier for the user and a set of roles that belong to him in the format ['id' => 123, 'roles' => ['administrator']]. A SimpleAuthenticator is provided in SimpleAuthenticator.php for demonstration purposes
-````
-                <?php
-                  class SimpleAuthenticator extends Authenticator {
-                    private $users;
+````php
+<?php
+  class SimpleAuthenticator extends Authenticator {
+    private $users;
 
-                    public function __construct($userpasses) {
-                      $this->users = $userpasses;
-                    }
+    public function __construct($userpasses) {
+      $this->users = $userpasses;
+    }
 
-                    public function authenticate($user, $password, $roles=null) {
-                      if($this->users[$user] === $password)
-                        return ['id' => $user, 'roles' => $roles];  // in reality, you want to pick/confirm roles for this user.
-                      return false;
-                    }
-                  }
+    public function authenticate($user, $password, $roles=null) {
+      if($this->users[$user] === $password)
+        return ['id' => $user, 'roles' => $roles];  // in reality, you want to pick/confirm roles for this user.
+      return false;
+    }
+  }
 ````
 
 This is not a good authenticator, as it gives users any roles they request (note that requesting roles is optional, you can ignore that parameter and simply return the list of valid roles for this user) and stores usernames and passwords in totality and in plain text. A better Authenticator will interact with your users table or other datastore.
 
 Developing the access control list, requires using the class ACL. An example follows.
-````
-                  $acl = new ACL();
-                  $acl->addRole("administrator");
-                  $acl->addRole("manager");
-                  $acl->addRole("client");
-                  $acl->addRole("guest");
-                  // or, $acl->addRole("administrator", ["manager"]);, indicating that administrator inherits manager's permissions.
+````php
+  $acl = new ACL();
+  $acl->addRole("administrator");
+  $acl->addRole("manager");
+  $acl->addRole("client");
+  $acl->addRole("guest");
+  // or, $acl->addRole("administrator", ["manager"]);, indicating that administrator inherits manager's permissions.
 
-                  $acl->addResource("files");
-                  $acl->addResource("client_lists");
+  $acl->addResource("files");
+  $acl->addResource("client_lists");
 
-                  $acl->deny("guest", ["files", "client_lists"]);
-                  $acl->allow(['administrator', 'manager'], ['files', 'client_lists'], ['read', 'write'], function($acl, $testing_role, $testing_resource, $testing_privilege) {
-                    // this function is an assertion that returns true/false if the rule should apply.
-                    $arguments = $acl->getQueriedOtherArguments();
-                    if($arguments['user_id'] == 4)  // we can pass in user ID and indeed file/list ID via the other arguments system.
-                      return false;
-                  }));
-
+  $acl->deny("guest", ["files", "client_lists"]);
+  $acl->allow(['administrator', 'manager'], ['files', 'client_lists'], ['read', 'write'], function($acl, $testing_role, $testing_resource, $testing_privilege) {
+    // this function is an assertion that returns true/false if the rule should apply.
+    $arguments = $acl->getQueriedOtherArguments();
+    if($arguments['user_id'] == 4)  // we can pass in user ID and indeed file/list ID via the other arguments system.
+      return false;
+  }));
 ````
 Note that you can call ``serialize()`` on the ``$acl`` object and will get a version you can store in your database. For more information in how inheritance and role/resources work, the Nette\Security and Zend_Acl documentation applies almost directly to this code.
 
 Finally, to integrate a User class to tie it all together. We can use the built in User or we can extend it to provide some of our own functionality (in particular, storing information other than the identifier about the user). For this demonstration, we'll use the provided User class (in User.php)
 
-````
-                // provide HMAC and AES keys.
-                $user = new User('SNgsHsd#T$DaN R*Ol~O6z+a+[v}@3)6%-X0nHH|%#ag+hYV 5f|zs}6;T|wM?3+', 'ALPHb92wzIamFw39VHLTiv6rY8i6EiEU8Plghvbhu547iPlgqlHSy76F');
-                $user->setAuthenticator(new SimpleAuthenticator([
-                  'johnny' => 'apples33d',
-                  'thelma' => 'J!JHndmTivE'
-                ]));
-                $user->setExpiration("30 days");
-                $user->setACL($acl);  // from our previous set up
-                // if the user is not signed in, his only role is 'guest' and his ID is null.
-                // but you can check with $user->isLoggedIn(), $user->whoAmI() or $user->roles()
+````php
+// provide HMAC and AES keys.
+$user = new User('SNgsHsd#T$DaN R*Ol~O6z+a+[v}@3)6%-X0nHH|%#ag+hYV 5f|zs}6;T|wM?3+', 'ALPHb92wzIamFw39VHLTiv6rY8i6EiEU8Plghvbhu547iPlgqlHSy76F');
+$user->setAuthenticator(new SimpleAuthenticator([
+  'johnny' => 'apples33d',
+  'thelma' => 'J!JHndmTivE'
+]));
+$user->setExpiration("30 days");
+$user->setACL($acl);  // from our previous set up
+// if the user is not signed in, his only role is 'guest' and his ID is null.
+// but you can check with $user->isLoggedIn(), $user->whoAmI() or $user->roles()
 
-                // if the user has a login stored in his cookies, he will be already authenticated. If he weren't, you can try to authenticate him with $user->login($username, $password); -- this will throw an exception if the login fails.
+// if the user has a login stored in his cookies, he will be already authenticated. If he weren't, you can try to authenticate him with $user->login($username, $password); -- this will throw an exception if the login fails.
 
-                if($user->can("files", "view", 1)) {
-                    echo "I'm allowed to view file #1";
-                }
+if($user->can("files", "view", 1)) {
+    echo "I'm allowed to view file #1";
+}
 ````
 
 You're done. That's the whole system.
