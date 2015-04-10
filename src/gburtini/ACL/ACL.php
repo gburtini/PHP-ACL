@@ -1,6 +1,5 @@
 <?php
 	namespace gburtini\ACL;
-
 	/* Access control list (ACL) functionality and privileges management.
 	 *
 	 * This solution is mostly based on Zend_Acl (c) Zend Technologies USA Inc. (http://www.zend.com), new BSD license
@@ -25,8 +24,8 @@
 	 *  ->getQueriedResource(): returns the originally queried resource (not the inherited)
 	 */
 	class ACL implements Serializable {
-		const DENY = -1;
-		const ALLOW = 1;
+		const DENY = false;
+		const ALLOW = true;
 
 		protected $roles = [];
 		protected $resources = [];
@@ -45,7 +44,7 @@
 		);
 
 
-		const ALL = -1;
+		const ALL = null;
 
 		public function serialize() {
 			return json_encode([
@@ -72,7 +71,7 @@
 		public function addRole($role, $parents = null) {
 			$this->checkRole($role, FALSE);
 			if (isset($this->roles[$role])) {
-				throw new Exception("Role '$role' already exists in the list.");
+				throw new InvalidArgumentException("Role '$role' already exists in the list.");
 			}
 			$roleParents = array();
 			if ($parents !== NULL) {
@@ -109,9 +108,9 @@
 		 */
 		private function checkRole($role, $need = true) {
 			if (!is_string($role) || $role === '') {
-				throw new Exception("Role must be a nonempty string.");
+				throw new InvalidArgumentException("Role must be a nonempty string.");
 			} elseif($need && !isset($this->roles[$role])) {
-				throw new Exception("Role '$role' does not exist.");
+				throw new InvalidArgumentException("Role '$role' does not exist.");
 			}
 		}
 		/**
@@ -220,7 +219,7 @@
 		{
 			$this->checkResource($resource, FALSE);
 			if (isset($this->resources[$resource])) {
-				throw new Exception("Resource '$resource' already exists in the list.");
+				throw new InvalidArgumentException("Resource '$resource' already exists in the list.");
 			}
 			if ($parent !== NULL) {
 				$this->checkResource($parent);
@@ -251,9 +250,9 @@
 		private function checkResource($resource, $need = TRUE)
 		{
 			if (!is_string($resource) || $resource === '') {
-				throw new Exception('Resource must be a non-empty string.');
+				throw new InvalidArgumentException('Resource must be a non-empty string.');
 			} elseif ($need && !isset($this->resources[$resource])) {
-				throw new Exception("Resource '$resource' does not exist.");
+				throw new InvalidArgumentException("Resource '$resource' does not exist.");
 			}
 		}
 		/**
@@ -647,7 +646,7 @@
 			if ($assertion === null) {
 				return $rule['type'];
 			} elseif(!is_callable($assertion)) {
-				throw new Exception("Assertion isn't callable for this rule.");
+				throw new InvalidArgumentException("Assertion isn't callable for this rule.");
 			} elseif($assertion($this, $role, $resource, $privilege) == true) {
 				return $rule['type'];
 			} elseif ($resource !== self::ALL || $role !== self::ALL || $privilege !== self::ALL) {

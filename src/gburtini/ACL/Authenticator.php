@@ -5,7 +5,7 @@ class Authenticator {
   public function authenticate($user, $password, $roles=null) {
     // returns either false or the internal ID for this user AND the roles appropriate.
     // if no roles are provided, the roles passed in are assumed good.
-    throw new Exception("Authenticator needs to be implemented.");
+    throw new BadMethodCallException("Authenticator needs to be implemented.");
   }
 }
 
