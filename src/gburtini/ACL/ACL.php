@@ -23,7 +23,7 @@
 	 *
 	 *  ->getQueriedResource(): returns the originally queried resource (not the inherited)
 	 */
-	class ACL implements Serializable {
+	class ACL implements \Serializable {
 		const DENY = false;
 		const ALLOW = true;
 
@@ -71,7 +71,7 @@
 		public function addRole($role, $parents = null) {
 			$this->checkRole($role, FALSE);
 			if (isset($this->roles[$role])) {
-				throw new InvalidArgumentException("Role '$role' already exists in the list.");
+				throw new \InvalidArgumentException("Role '$role' already exists in the list.");
 			}
 			$roleParents = array();
 			if ($parents !== NULL) {
@@ -108,9 +108,9 @@
 		 */
 		private function checkRole($role, $need = true) {
 			if (!is_string($role) || $role === '') {
-				throw new InvalidArgumentException("Role must be a nonempty string.");
+				throw new \InvalidArgumentException("Role must be a nonempty string.");
 			} elseif($need && !isset($this->roles[$role])) {
-				throw new InvalidArgumentException("Role '$role' does not exist.");
+				throw new \InvalidArgumentException("Role '$role' does not exist.");
 			}
 		}
 		/**
@@ -219,7 +219,7 @@
 		{
 			$this->checkResource($resource, FALSE);
 			if (isset($this->resources[$resource])) {
-				throw new InvalidArgumentException("Resource '$resource' already exists in the list.");
+				throw new \InvalidArgumentException("Resource '$resource' already exists in the list.");
 			}
 			if ($parent !== NULL) {
 				$this->checkResource($parent);
@@ -250,9 +250,9 @@
 		private function checkResource($resource, $need = TRUE)
 		{
 			if (!is_string($resource) || $resource === '') {
-				throw new InvalidArgumentException('Resource must be a non-empty string.');
+				throw new \InvalidArgumentException('Resource must be a non-empty string.');
 			} elseif ($need && !isset($this->resources[$resource])) {
-				throw new InvalidArgumentException("Resource '$resource' does not exist.");
+				throw new \InvalidArgumentException("Resource '$resource' does not exist.");
 			}
 		}
 		/**
@@ -646,7 +646,7 @@
 			if ($assertion === null) {
 				return $rule['type'];
 			} elseif(!is_callable($assertion)) {
-				throw new InvalidArgumentException("Assertion isn't callable for this rule.");
+				throw new \InvalidArgumentException("Assertion isn't callable for this rule.");
 			} elseif($assertion($this, $role, $resource, $privilege) == true) {
 				return $rule['type'];
 			} elseif ($resource !== self::ALL || $role !== self::ALL || $privilege !== self::ALL) {

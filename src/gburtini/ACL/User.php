@@ -80,7 +80,7 @@ class User {
         $this->roles = array_unique(array_merge($this->roles, $response['roles']));
       return $response;
     } else {
-      throw new InvalidLoginException("Invalid login.");
+      throw new \InvalidLoginException("Invalid login.");
     }
   }
 
@@ -122,7 +122,7 @@ class User {
    */
   public function can($resource, $action, $id=null) {
     if($this->acl === null)
-      throw new RuntimeException("You haven't set an ACL.");
+      throw new \RuntimeException("You haven't set an ACL.");
 
     // a user can do something if any of his roles can do it.
     foreach($this->roles as $role) {
