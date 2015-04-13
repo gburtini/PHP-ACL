@@ -71,7 +71,7 @@ class User {
    * permission roles that is acceptable as long as the authenticator returns the same ID
    */
   public function login($username, $password, $roles=null) {
-    if(($response = $authenticator->authenticate($username, $password, $roles)) !== false) {
+    if(($response = $this->authenticator->authenticate($username, $password, $roles)) !== false) {
       // good, set login parameters.
       $this->setInternalLogin($response['id']);
       if($response['id'] != $this->id)
@@ -149,7 +149,8 @@ class User {
   protected function readMessage($cipher, $hash) {
       $cipher = base64_decode($cipher);
       $hash = base64_decode($hash);
-      if(!hash_equals($this->hash($cipher), $hash))
+      if(empty($cipher) || empty($hash)) return false;
+      if(!\hash_equals($this->hash($cipher), $hash))
         return false;
 
       $iv_size = $this->ivSize();
