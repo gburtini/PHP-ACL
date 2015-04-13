@@ -137,7 +137,7 @@ class User {
   }
 
   protected function computeExpiration() {
-    return strtotime("+" . $time, time());
+    return strtotime("+" . $this->expiration, time());
   }
 
   /**
