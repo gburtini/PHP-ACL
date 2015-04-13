@@ -80,7 +80,7 @@ class User {
         $this->roles = array_unique(array_merge($this->roles, $response['roles']));
       return $response;
     } else {
-      throw new \InvalidLoginException("Invalid login.");
+      throw new gburtini\ACL\Exceptions\InvalidLoginException("Invalid login.");
     }
   }
 

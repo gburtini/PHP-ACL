@@ -646,7 +646,7 @@
 			if ($assertion === null) {
 				return $rule['type'];
 			} elseif(!is_callable($assertion)) {
-				throw new \InvalidArgumentException("Assertion isn't callable for this rule.");
+				throw new gburtini\ACL\Exceptions\InvalidAssertionException("Assertion isn't callable for this rule.");
 			} elseif($assertion($this, $role, $resource, $privilege) == true) {
 				return $rule['type'];
 			} elseif ($resource !== self::ALL || $role !== self::ALL || $privilege !== self::ALL) {
