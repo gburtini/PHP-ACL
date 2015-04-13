@@ -157,6 +157,8 @@ class User {
       $iv_dec = substr($cipher, 0, $iv_size);
       $ciphertext_dec = substr($cipher, $iv_size);
       $plaintext_dec = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $ciphertext_dec, MCRYPT_MODE_CBC, $iv_dec);
+      $plaintext_dec = rtrim($plaintext_dec, "\0\4");	// this is scary, but mcrypt_encrypt padded with zeros.
+
       return json_decode($plaintext_dec);
   }
 
