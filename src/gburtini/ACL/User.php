@@ -156,7 +156,7 @@ class User {
       $iv_size = $this->ivSize();
       $iv_dec = substr($cipher, 0, $iv_size);
       $ciphertext_dec = substr($cipher, $iv_size);
-      $plaintext_dec = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, self::AES_SECRET_KEY, $ciphertext_dec, MCRYPT_MODE_CBC, $iv_dec);
+      $plaintext_dec = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $ciphertext_dec, MCRYPT_MODE_CBC, $iv_dec);
       return json_decode($plaintext_dec);
   }
 
@@ -171,7 +171,7 @@ class User {
     $iv_size = $this->ivSize();
 
     $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
-    $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, self::AES_SECRET_KEY, $plaintext, MCRYPT_MODE_CBC, $iv);
+    $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $plaintext, MCRYPT_MODE_CBC, $iv);
     $ciphertext = $iv . $ciphertext;
     $ciphertext_base64 = base64_encode($ciphertext);
 
@@ -181,7 +181,7 @@ class User {
   }
 
   protected function hash($message) {
-    $hash = hash_hmac('sha256', $message, self::HMAC_SECRET_KEY);
+    $hash = hash_hmac('sha256', $message, $this->HMAC_SECRET_KEY);
     return $hash;
   }
   protected function ivSize() {
