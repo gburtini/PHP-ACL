@@ -147,16 +147,29 @@ class User {
   * your own crypto.
   **/
   protected function readMessage($cipher, $hash) {
-      $cipher = base64_decode($cipher);
-      $hash = base64_decode($hash);
-      if(empty($cipher) || empty($hash)) return false;
+      $cipher = base64_decode($cipher, true);
+      $hash = base64_decode($hash, true);
+      if($cipher === false || $hash === false || empty($cipher) || empty($hash)) 
+        return false;
+
+      // always authenticate as a first step, exit if it doesn't pass: http://www.thoughtcrime.org/blog/the-cryptographic-doom-principle/
+      // this should be the step that any user modified messages get dumped. if anything bad happens after this, we must assume it is
+      // a security risk.
       if(!\hash_equals($this->hash($cipher), $hash))
         return false;
 
       $iv_size = $this->ivSize();
+      if($iv_size === false)
+         throw new RuntimeException("Cowardly refusing to decrypt when IV size is unknown (do not want to run cryptoprimitives on unknown input).");
+ 
       $iv_dec = substr($cipher, 0, $iv_size);
+      if($iv_dec === false)
+         throw new RuntimeException("Cowardly refusing to decrypt when IV cannot be found.");
+
       $ciphertext_dec = substr($cipher, $iv_size);
       $plaintext_dec = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $ciphertext_dec, MCRYPT_MODE_CBC, $iv_dec);
+      if($plaintext_dec === false)
+         throw new RuntimeException("Cowardly refusing to continue decryption when Rijndael failed.");
       $plaintext_dec = rtrim($plaintext_dec, "\0\4");	// this is scary, but mcrypt_encrypt padded with zeros.
 
       return json_decode($plaintext_dec);
@@ -167,17 +180,30 @@ class User {
    * the token ($message), because the HMAC will ensure it is not tampered with.
    * Removing the crypto here would greatly reduce the complexity of this part of
    * the code.
+   *
+   * Implements encrypt-then-authenticate. http://www.thoughtcrime.org/blog/the-cryptographic-doom-principle/
    */
   protected function prepareMessage($message) {
     $plaintext = json_encode($message);
     $iv_size = $this->ivSize();
+    if($iv_size === false)
+       throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed (size calculation is false?)."); 
 
     $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+    if($iv === false)
+       throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed."); 
+     
     $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $plaintext, MCRYPT_MODE_CBC, $iv);
+    if($ciphertext === false)
+       throw new RuntimeException("Cowardly refusing to return ciphertext when Rijndael call failed."); 
+
     $ciphertext = $iv . $ciphertext;
     $ciphertext_base64 = base64_encode($ciphertext);
 
     $hash = $this->hash($ciphertext);
+    if($hash === false)
+       throw new RuntimeException("Cowardly refusing to return ciphertext when hash calculation fails. Check that the appropriate HMAC algorithm is available.");
+
     $hash_base64 = base64_encode($hash);
     return [$ciphertext_base64, $hash_base64];
   }
