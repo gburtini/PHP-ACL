@@ -172,7 +172,7 @@ class User {
          throw new RuntimeException("Cowardly refusing to continue decryption when Rijndael failed.");
       $plaintext_dec = rtrim($plaintext_dec, "\0\4");	// this is scary, but mcrypt_encrypt padded with zeros.
 
-      return json_decode($plaintext_dec);
+      return json_decode($plaintext_dec, true);
   }
 
   /*
