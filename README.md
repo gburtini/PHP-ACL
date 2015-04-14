@@ -90,6 +90,13 @@ if($user->can("files", "view", 1)) {
 
 You're done. That's the whole system.
 
+Note: strong key selection is important. [My website](http://giuseppe.ca/aes.php) provides some code which generates keys for you if you trust me and my server to not be compromised (note: you shouldn't, you should inspect and run the code yourself in the ideal case), fundamentally it is not a lot more sophisicated than a call to [openssl_random_pseudo_bytes](http://php.net/manual/en/function.openssl-random-pseudo-bytes.php):
+
+````
+$key =  openssl_random_pseudo_bytes($length_bytes, $boolean);
+if($boolean === false) die("This is not a good key. Something bad happened.");
+````
+
 Future Work
 -----------
 There is much that can be done, but nothing that I need immediately. Pull requests are invited.
