@@ -68,7 +68,9 @@ Note that you can call ``serialize()`` on the ``$acl`` object and will get a ver
 Finally, to integrate a User class to tie it all together. We can use the built in User or we can extend it to provide some of our own functionality (in particular, storing information other than the identifier about the user). For this demonstration, we'll use the provided User class (in User.php)
 
 ````php
-// provide HMAC and AES keys.
+// provide HMAC and AES keys... note that as of PHP 5.6 invalid length AES keys are not acceptable.
+// we use the WordPress Secret Key API to generate the HMAC key: https://api.wordpress.org/secret-key/1.1/salt/
+// if you wish and trust me, you can generate keys here: http://giuseppe.ca/aes.php - pass ?size=12 to force a particular size (bytes) output key.
 $user = new User('SNgsHsd#T$DaN R*Ol~O6z+a+[v}@3)6%-X0nHH|%#ag+hYV 5f|zs}6;T|wM?3+', 'ALPHb92wzIamFw39VHLTiv6rY8i6EiEU8Plghvbhu547iPlgqlHSy76F');
 $user->setAuthenticator(new SimpleAuthenticator([
   'johnny' => 'apples33d',
@@ -87,6 +89,13 @@ if($user->can("files", "view", 1)) {
 ````
 
 You're done. That's the whole system.
+
+Note: strong key selection is important. [My website](http://giuseppe.ca/aes.php) provides some code which generates keys for you if you trust me and my server to not be compromised (note: you shouldn't, you should inspect and run the code yourself in the ideal case), fundamentally it is not a lot more sophisicated than a call to [openssl_random_pseudo_bytes](http://php.net/manual/en/function.openssl-random-pseudo-bytes.php):
+
+````
+$key =  openssl_random_pseudo_bytes($length_bytes, $boolean);
+if($boolean === false) die("This is not a good key. Something bad happened.");
+````
 
 Future Work
 -----------
@@ -109,6 +118,7 @@ License
 As parts of the code are derived from New BSD licensed code, we have followed in the spirit and this package itself is released under the New BSD.
 
 Novel contributions. Copyright (c) 2015 Giuseppe Burtini.
+
 Zend_Acl original code. Copyright (c) 2005-2015, Zend Technologies USA, Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

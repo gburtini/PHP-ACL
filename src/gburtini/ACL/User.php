@@ -100,9 +100,11 @@ class User {
   }
 
   public function logout() {
+    // delete the cookies by setting them to blank (which won't auth.) and expiring them one second in the future.
     setcookie(self::COOKIE_NAME, "", time()+1, "/");
     setcookie(self::COOKIE_NAME . "_hmac", "", time()+1, "/");
 
+    // clear the current settings... note that extending classes should be wary of a call to logout in this sense.
     $this->id = null;
     $this->roles = ["guest"];
   }
@@ -195,7 +197,7 @@ class User {
          throw new RuntimeException("Cowardly refusing to continue decryption when Rijndael failed.");
       $plaintext_dec = rtrim($plaintext_dec, "\0\4");	// this is scary, but mcrypt_encrypt padded with zeros.
 
-      return json_decode($plaintext_dec);
+      return json_decode($plaintext_dec, true);
   }
 
   /*
