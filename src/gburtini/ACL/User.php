@@ -64,11 +64,9 @@ class User {
       }
   }
 
-  protected function setInternalLogin($id) {
-    $this->id = $id;
-
+  protected function setInternalLogin() {
     $expires = $this->computeExpiration();
-    $message = ['id' => $id, 'roles' => $this->roles, 'now' => time(), 'expires' => $expires];
+    $message = ['id' => $this->id, 'roles' => $this->roles, 'now' => time(), 'expires' => $expires];
     list($message, $hash) = $this->prepareMessage($message);
 
     // NOTE: these cookies could be set longer to allow detecting why a login failed?
@@ -88,11 +86,15 @@ class User {
   public function login($username, $password, $roles=null) {
     if(($response = $this->authenticator->authenticate($username, $password, $roles)) !== false) {
       // good, set login parameters.
-      $this->setInternalLogin($response['id']);
       if($response['id'] != $this->id)
         $this->roles = $response['roles'];
       else
         $this->roles = array_unique(array_merge($this->roles, $response['roles']));
+
+      // NOTE: I am not super comfortable with this. Consider attack vectors that involve changing users mid-authentication.
+      $this->id = $response['id'];
+      $this->setInternalLogin();
+
       return $response;
     } else {
       throw new Exceptions\InvalidLoginException("Invalid login.");
@@ -164,7 +166,12 @@ class User {
   * your own crypto.
   **/
   protected function readMessage($cipher, $hash) {
-      $cipher = base64_decode($cipher, true);
+      if(ACL_USE_CRYPTO) {
+         $cipher = base64_decode($cipher, true);
+      } else { 
+         $cipher = $cipher; // we don't base64 encode if crypto is off (so that it can be plainly read).
+      }
+
       $hash = base64_decode($hash, true);
       if($cipher === false || $hash === false || empty($cipher) || empty($hash)) 
         return false;
@@ -180,7 +187,7 @@ class User {
       // tokens for development, however, there is no cryptographic argument that requires these to be encrypted.
       if(!ACL_USE_CRYPTO) {
         $plaintext_dec = $cipher; // without crypto these are identical. the HMAC enforces the nonmodification.
-        return json_decode($plaintext_dec);
+        return json_decode($plaintext_dec, true);
       }
 
       $iv_size = $this->ivSize();
@@ -224,12 +231,12 @@ class User {
           throw new RuntimeException("Cowardly refusing to return ciphertext when Rijndael call failed."); 
 
        $ciphertext = $iv . $ciphertext;
+       $ciphertext_base64 = base64_encode($ciphertext);
     } else {
       // note if ACL_USE_CRYPTO is disabled we just mock ciphertext to the plaintext.
-      $ciphertext = $plaintext;
+      $ciphertext_base64 = $ciphertext = $plaintext;
     }
 
-    $ciphertext_base64 = base64_encode($ciphertext);
 
     $hash = $this->hash($ciphertext);
     if($hash === false)
