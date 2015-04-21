@@ -23,7 +23,7 @@ There are three parts to using this package.
 
 Each can be complex or simple depending on your use case.
 
-An Authenticator is a class that implements the method ``->authenticate($username, $password[, $roles])``, verifies the users name and password (and if specified, requested roles), and returns a unique identifier for the user and a set of roles that belong to him in the format ['id' => 123, 'roles' => ['administrator']]. A SimpleAuthenticator is provided in SimpleAuthenticator.php for demonstration purposes
+An Authenticator is a class that implements the method ``->authenticate($username, $password[, $roles])``, verifies the users name and password (and if specified, requested roles), and returns a unique identifier for the user and a set of roles that belong to him in the format ['id' => 123, 'roles' => ['administrator']]. Some notes are provided in Authenticator.php on *some* but not all the considerations necessary to write a good authentication system. A SimpleAuthenticator is provided in SimpleAuthenticator.php for demonstration purposes
 ````php
 <?php
   class SimpleAuthenticator extends Authenticator {
@@ -45,23 +45,23 @@ This is not a good authenticator, as it gives users any roles they request (note
 
 Developing the access control list, requires using the class ACL. An example follows.
 ````php
-  $acl = new ACL();
-  $acl->addRole("administrator");
-  $acl->addRole("manager");
-  $acl->addRole("client");
-  $acl->addRole("guest");
-  // or, $acl->addRole("administrator", ["manager"]);, indicating that administrator inherits manager's permissions.
+$acl = new ACL();
+$acl->addRole("administrator");
+$acl->addRole("manager");
+$acl->addRole("client");
+$acl->addRole("guest");
+// or, $acl->addRole("administrator", ["manager"]);, indicating that administrator inherits manager's permissions.
 
-  $acl->addResource("files");
-  $acl->addResource("client_lists");
+$acl->addResource("files");
+$acl->addResource("client_lists");
 
-  $acl->deny("guest", ["files", "client_lists"]);
-  $acl->allow(['administrator', 'manager'], ['files', 'client_lists'], ['read', 'write'], function($acl, $testing_role, $testing_resource, $testing_privilege) {
-    // this function is an assertion that returns true/false if the rule should apply.
-    $arguments = $acl->getQueriedOtherArguments();
-    if($arguments['user_id'] == 4)  // we can pass in user ID and indeed file/list ID via the other arguments system.
-      return false;
-  }));
+$acl->deny("guest", ["files", "client_lists"]);
+$acl->allow(['administrator', 'manager'], ['files', 'client_lists'], ['read', 'write'], function($acl, $testing_role, $testing_resource, $testing_privilege) {
+// this function is an assertion that returns true/false if the rule should apply.
+$arguments = $acl->getQueriedOtherArguments();
+if($arguments['user_id'] == 4)  // we can pass in user ID and indeed file/list ID via the other arguments system.
+  return false;
+}));
 ````
 Note that you can call ``serialize()`` on the ``$acl`` object and will get a version you can store in your database. For more information in how inheritance and role/resources work, the Nette\Security and Zend_Acl documentation applies almost directly to this code.
 
@@ -107,6 +107,7 @@ There is much that can be done, but nothing that I need immediately. Pull reques
 * Verify and extract the crypto required for User.php in to its own dependent package.
 * Integrate with gburtini/Hooks to allow events to occur on user instances.
 * Document every method in this file (README.md).
+* Add "token authentication" system that allows temporary (regular expression or role based?) authentication to be generated. For example, for changing passwords in a recovery your password system.
 
 There is further work that I would prefer to keep *out* of this package for simplicity, but would be of value to many users of the package:
 
