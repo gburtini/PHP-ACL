@@ -1,6 +1,17 @@
 <?php
 namespace gburtini\ACL;
 require_once dirname(__FILE__) . "/compatibility.php";
+
+/*
+ * Important note: if ACL_USE_CRYPTO is falsy, this DISABLES AES encrypting the cooking, which means the ID and role messages are stored /in plain text/ on the client device.
+ * HMAC validation still takes place which should prevent tampering. This is only recommended for development as the security in depth from encrypting the blobs is at least 
+ * plausibly valuable.
+ *
+ * Disclaimer: I am not a cryptographer. I read OWASP regularly. I should not be advising cryptographic code at all. Please investigate this on your own prior to accepting the
+ * implementation. This code comes with no warranty. You should read this in depth before implementing any authentication code: https://www.owasp.org/index.php/Authentication_Cheat_Sheet
+ */
+define("ACL_USE_CRYPTO", TRUE);
+
 /**
  * This class provides the basic login and permissions functionality for our role-based
  * access system.
@@ -12,13 +23,17 @@ class User {
   protected $roles = ['guest'];
 
   protected $expiration = "30 days";
-
+  
   const COOKIE_NAME = "usercookie";
   private $HMAC_SECRET_KEY;
   private $AES_SECRET_KEY;
 
   // The keys should be specified as secret/private site configuration and passed in here, the same for every request.
-  public function __construct($hmackey, $aeskey) {
+  // AES key is unnecessary if you have crypto off. For security reasons, it will throw an exception if crypto is on and it is unspecified. 
+  public function __construct($hmackey, $aeskey=null) {
+    if(ACL_USER_CRYPTO && ($aeskey === null)) // TODO: possibly check length of both keys here, ensure they are 'sufficient'.
+        throw new Exception("Missing cryptographic key for AES.");
+
     $this->HMAC_SECRET_KEY = $hmackey;
     $this->HMAC_AES_KEY = $aeskey;
     $this->internalLogin();
@@ -158,6 +173,14 @@ class User {
       if(!\hash_equals($this->hash($cipher), $hash))
         return false;
 
+      // important note: if ACL_USE_CRYPTO is set to false, this DISABLES CRYPTO, which means the ID and role messages are stored /in plain text/ on the client device.
+      // they are verified by the HMAC for tampering, but this will allow users to read their own roles at a minimum. My recommendation is to only use crypto-free 
+      // tokens for development, however, there is no cryptographic argument that requires these to be encrypted.
+      if(!ACL_USE_CRYPTO) {
+        $plaintext_dec = $cipher; // without crypto these are identical. the HMAC enforces the nonmodification.
+        return json_decode($plaintext_dec);
+      }
+
       $iv_size = $this->ivSize();
       if($iv_size === false)
          throw new RuntimeException("Cowardly refusing to decrypt when IV size is unknown (do not want to run cryptoprimitives on unknown input).");
@@ -185,19 +208,25 @@ class User {
    */
   protected function prepareMessage($message) {
     $plaintext = json_encode($message);
-    $iv_size = $this->ivSize();
-    if($iv_size === false)
-       throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed (size calculation is false?)."); 
+    if(ACL_USE_CRYPTO) {
+       $iv_size = $this->ivSize();
+       if($iv_size === false)
+          throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed (size calculation is false?)."); 
 
-    $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
-    if($iv === false)
-       throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed."); 
+       $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+       if($iv === false)
+          throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed."); 
      
-    $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $plaintext, MCRYPT_MODE_CBC, $iv);
-    if($ciphertext === false)
-       throw new RuntimeException("Cowardly refusing to return ciphertext when Rijndael call failed."); 
+       $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $plaintext, MCRYPT_MODE_CBC, $iv);
+       if($ciphertext === false)
+          throw new RuntimeException("Cowardly refusing to return ciphertext when Rijndael call failed."); 
 
-    $ciphertext = $iv . $ciphertext;
+       $ciphertext = $iv . $ciphertext;
+    } else {
+      // note if ACL_USE_CRYPTO is disabled we just mock ciphertext to the plaintext.
+      $ciphertext = $plaintext;
+    }
+
     $ciphertext_base64 = base64_encode($ciphertext);
 
     $hash = $this->hash($ciphertext);
