@@ -60,7 +60,6 @@
 			$this->rules = $data['rules'];
 		}
 
-		/********************* roles *********************/
 		/**
 		 * Adds a Role to the list. The most recently added parent
 		 * takes precedence over parents that were previously added.
@@ -207,7 +206,6 @@
 		}
 
 
-		/********************* resources ****************d*g**/
 		/**
 		 * Adds a Resource having an identifier unique to the list.
 		 *
@@ -337,7 +335,7 @@
 			$this->resources = array();
 			return $this;
 		}
-		/********************* defining rules ****************d*g**/
+
 		/**
 		 * Allows one or more Roles access to [certain $privileges upon] the specified Resource(s).
 		 * If $assertion is provided, then it must return TRUE in order for rule to apply.
@@ -570,7 +568,7 @@
 		{
 			return $this->queriedResource;
 		}
-		/********************* internals ****************d*g**/
+
 		/**
 		 * Performs a depth-first search of the Role DAG, starting at $role, in order to find a rule
 		 * allowing/denying $role access to a/all $privilege upon $resource.
