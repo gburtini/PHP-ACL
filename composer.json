@@ -18,7 +18,8 @@
     },
     "autoload": {
         "psr-0": {
-            "gburtini\\ACL": "src"
+            "gburtini\\ACL": "src",
+            "gburtini\\AuthenticatedStorage": "src"
         }
     }
 }

@@ -1,14 +1,12 @@
 <?php
 namespace gburtini\ACL;
-require_once dirname(__FILE__) . "/compatibility.php";
 
 /*
  * Important note: if ACL_USE_CRYPTO is falsy, this DISABLES AES encrypting the cooking, which means the ID and role messages are stored /in plain text/ on the client device.
- * HMAC validation still takes place which should prevent tampering. This is only recommended for development as the security in depth from encrypting the blobs is at least 
+ * HMAC validation still takes place which should prevent tampering. This is only recommended for development as the security in depth from encrypting the blobs is at least
  * plausibly valuable.
  *
- * Disclaimer: I am not a cryptographer. I read OWASP regularly. I should not be advising cryptographic code at all. Please investigate this on your own prior to accepting the
- * implementation. This code comes with no warranty. You should read this in depth before implementing any authentication code: https://www.owasp.org/index.php/Authentication_Cheat_Sheet
+ * Please see the notes in AuthenticatedStorage\AESAuthenticatedCookie before trusting this for cryptographic integrity.
  */
 define("ACL_USE_CRYPTO", TRUE);
 
@@ -23,20 +21,22 @@ class User {
   protected $roles = ['guest'];
 
   protected $expiration = "30 days";
-  
+
   const COOKIE_NAME = "usercookie";
-  private $HMAC_SECRET_KEY;
-  private $AES_SECRET_KEY;
+  protected $cookie;
 
   // The keys should be specified as secret/private site configuration and passed in here, the same for every request.
-  // AES key is unnecessary if you have crypto off. For security reasons, it will throw an exception if crypto is on and it is unspecified. 
+  // AES key is unnecessary if you have crypto off. For security reasons, it will throw an exception if crypto is on and it is unspecified.
   public function __construct($hmackey, $aeskey=null) {
     if(ACL_USER_CRYPTO && ($aeskey === null)) // TODO: possibly check length of both keys here, ensure they are 'sufficient'.
         throw new Exception("Missing cryptographic key for AES.");
 
-    $this->HMAC_SECRET_KEY = $hmackey;
-    $this->HMAC_AES_KEY = $aeskey;
     $this->internalLogin();
+    if(!ACL_USE_CRYPTO) {
+      $this->cookie = \gburtini\AuthenticatedStorage\AuthenticatedCookie(self::COOKIE_NAME, $hmackey, $this->expiration);
+    } else {
+      $this->cookie = \gburtini\AuthenticatedStorage\AESAuthenticatedCookie(self::COOKIE_NAME, $hmackey, $aeskey, $this->expiration);
+    }
   }
 
   public function isLoggedIn() {
@@ -50,7 +50,7 @@ class User {
   // NOTE: you can override these methods to use another method of storing logins.
   protected function internalLogin() {
       // check if a login exists.
-      $message = $this->readMessage($_COOKIE[self::COOKIE_NAME], $_COOKIE[self::COOKIE_NAME."_hmac"]);
+      $message = $this->cookie->get();
       if($message === false)
         return false;
       else {
@@ -67,11 +67,7 @@ class User {
   protected function setInternalLogin() {
     $expires = $this->computeExpiration();
     $message = ['id' => $this->id, 'roles' => $this->roles, 'now' => time(), 'expires' => $expires];
-    list($message, $hash) = $this->prepareMessage($message);
-
-    // NOTE: these cookies could be set longer to allow detecting why a login failed?
-    setcookie(self::COOKIE_NAME, $message, $expires, "/");
-    setcookie(self::COOKIE_NAME . "_hmac", $hash, $expires, "/");
+    $this->cookie->set($message);
   }
 
 
@@ -103,8 +99,7 @@ class User {
 
   public function logout() {
     // delete the cookies by setting them to blank (which won't auth.) and expiring them one second in the future.
-    setcookie(self::COOKIE_NAME, "", time()+1, "/");
-    setcookie(self::COOKIE_NAME . "_hmac", "", time()+1, "/");
+    $this->cookie->clear();
 
     // clear the current settings... note that extending classes should be wary of a call to logout in this sense.
     $this->id = null;
@@ -115,8 +110,14 @@ class User {
    * Set the cookie expiration time in relation to when login is called.
    */
   public function setExpiration($time = "30 days") {
-    //$expiration = strtotime("+" . $time);
+    $this->cookie->setExpiration($time);
     $this->expiration = $time;
+  }
+
+  // computes the cookie expiration time, it needs to be here because it is validated both by expiring the cookie client side
+  // and by writing a tamper proof timestamp to the cookie.
+  protected function computeExpiration() {
+    return strtotime("+" . $this->expiration, time());
   }
 
   /**
@@ -153,105 +154,6 @@ class User {
         return true;
     }
     return false;
-  }
-
-  protected function computeExpiration() {
-    return strtotime("+" . $this->expiration, time());
-  }
-
-  /**
-  * Internal crypto code - I really hate having all this (too) low level crypto here...
-  * A reminder that this code has absolutely no warranty express or implied, not even the
-  * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. Don't roll
-  * your own crypto.
-  **/
-  protected function readMessage($cipher, $hash) {
-      if(ACL_USE_CRYPTO) {
-         $cipher = base64_decode($cipher, true);
-      } else { 
-         $cipher = $cipher; // we don't base64 encode if crypto is off (so that it can be plainly read).
-      }
-
-      $hash = base64_decode($hash, true);
-      if($cipher === false || $hash === false || empty($cipher) || empty($hash)) 
-        return false;
-
-      // always authenticate as a first step, exit if it doesn't pass: http://www.thoughtcrime.org/blog/the-cryptographic-doom-principle/
-      // this should be the step that any user modified messages get dumped. if anything bad happens after this, we must assume it is
-      // a security risk.
-      if(!\hash_equals($this->hash($cipher), $hash))
-        return false;
-
-      // important note: if ACL_USE_CRYPTO is set to false, this DISABLES CRYPTO, which means the ID and role messages are stored /in plain text/ on the client device.
-      // they are verified by the HMAC for tampering, but this will allow users to read their own roles at a minimum. My recommendation is to only use crypto-free 
-      // tokens for development, however, there is no cryptographic argument that requires these to be encrypted.
-      if(!ACL_USE_CRYPTO) {
-        $plaintext_dec = $cipher; // without crypto these are identical. the HMAC enforces the nonmodification.
-        return json_decode($plaintext_dec, true);
-      }
-
-      $iv_size = $this->ivSize();
-      if($iv_size === false)
-         throw new RuntimeException("Cowardly refusing to decrypt when IV size is unknown (do not want to run cryptoprimitives on unknown input).");
- 
-      $iv_dec = substr($cipher, 0, $iv_size);
-      if($iv_dec === false)
-         throw new RuntimeException("Cowardly refusing to decrypt when IV cannot be found.");
-
-      $ciphertext_dec = substr($cipher, $iv_size);
-      $plaintext_dec = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $ciphertext_dec, MCRYPT_MODE_CBC, $iv_dec);
-      if($plaintext_dec === false)
-         throw new RuntimeException("Cowardly refusing to continue decryption when Rijndael failed.");
-      $plaintext_dec = rtrim($plaintext_dec, "\0\4");	// this is scary, but mcrypt_encrypt padded with zeros.
-
-      return json_decode($plaintext_dec, true);
-  }
-
-  /*
-   * It has been brought to my attention that it is not a requirement to encrypt
-   * the token ($message), because the HMAC will ensure it is not tampered with.
-   * Removing the crypto here would greatly reduce the complexity of this part of
-   * the code.
-   *
-   * Implements encrypt-then-authenticate. http://www.thoughtcrime.org/blog/the-cryptographic-doom-principle/
-   */
-  protected function prepareMessage($message) {
-    $plaintext = json_encode($message);
-    if(ACL_USE_CRYPTO) {
-       $iv_size = $this->ivSize();
-       if($iv_size === false)
-          throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed (size calculation is false?)."); 
-
-       $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
-       if($iv === false)
-          throw new RuntimeException("Cowardly refusing to return ciphertext when IV creation failed."); 
-     
-       $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $plaintext, MCRYPT_MODE_CBC, $iv);
-       if($ciphertext === false)
-          throw new RuntimeException("Cowardly refusing to return ciphertext when Rijndael call failed."); 
-
-       $ciphertext = $iv . $ciphertext;
-       $ciphertext_base64 = base64_encode($ciphertext);
-    } else {
-      // note if ACL_USE_CRYPTO is disabled we just mock ciphertext to the plaintext.
-      $ciphertext_base64 = $ciphertext = $plaintext;
-    }
-
-
-    $hash = $this->hash($ciphertext);
-    if($hash === false)
-       throw new RuntimeException("Cowardly refusing to return ciphertext when hash calculation fails. Check that the appropriate HMAC algorithm is available.");
-
-    $hash_base64 = base64_encode($hash);
-    return [$ciphertext_base64, $hash_base64];
-  }
-
-  protected function hash($message) {
-    $hash = hash_hmac('sha256', $message, $this->HMAC_SECRET_KEY);
-    return $hash;
-  }
-  protected function ivSize() {
-    return mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
   }
 }
 ?>
