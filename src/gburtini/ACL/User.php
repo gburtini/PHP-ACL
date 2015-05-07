@@ -1,5 +1,7 @@
 <?php
 namespace gburtini\ACL;
+use gburtini\AuthenticatedStorage\AESAuthenticatedCookie;
+use gburtini\AuthenticatedStorage\AuthenticatedCookie;
 
 /*
  * Important note: if ACL_USE_CRYPTO is falsy, this DISABLES AES encrypting the cooking, which means the ID and role messages are stored /in plain text/ on the client device.
@@ -31,12 +33,13 @@ class User {
     if(ACL_USER_CRYPTO && ($aeskey === null)) // TODO: possibly check length of both keys here, ensure they are 'sufficient'.
         throw new Exception("Missing cryptographic key for AES.");
 
-    $this->internalLogin();
     if(!ACL_USE_CRYPTO) {
-      $this->cookie = \gburtini\AuthenticatedStorage\AuthenticatedCookie(self::COOKIE_NAME, $hmackey, $this->expiration);
+      $this->cookie = new AuthenticatedCookie(self::COOKIE_NAME, $hmackey, $this->expiration);
     } else {
-      $this->cookie = \gburtini\AuthenticatedStorage\AESAuthenticatedCookie(self::COOKIE_NAME, $hmackey, $aeskey, $this->expiration);
+      $this->cookie = new AESAuthenticatedCookie(self::COOKIE_NAME, $hmackey, $aeskey, $this->expiration);
     }
+
+    $this->internalLogin();
   }
 
   public function isLoggedIn() {
