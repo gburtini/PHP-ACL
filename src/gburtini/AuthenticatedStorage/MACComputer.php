@@ -8,6 +8,8 @@ namespace gburtini\AuthenticatedStorage;
  *
  * Even if you don't want it, prepareCiphertext (the prior-to-decoding prepare function)
  * and preparePlaintext (the prior-to-encoding prepare function) can be extended as you wish.
+ * 
+ * Stupidly relies on $this->key_hmac being the key. This should be more clear/flexible.
  */
 trait MACComputer {
   protected function prepareCiphertext($ciphertext) {
@@ -53,7 +55,7 @@ trait MACComputer {
 
     $ciphertext = $this->preparePlaintext($plaintext);
 
-    $hash = $this->hash($ciphertext);
+    $hash = static::hash($ciphertext, $this->key_hmac);
     if($hash === false)
        throw new RuntimeException("Cowardly refusing to return ciphertext when hash calculation fails. Check that the appropriate HMAC algorithm is available.");
 
@@ -64,7 +66,7 @@ trait MACComputer {
    * Validates a hash in a timing attack aware manner.
    */
   protected static function validateHash($message, $hash, $key) {
-    if(!\hash_equals(static::hash($message, $key), $hash))
+    if(!hash_equals(static::hash($message, $key), $hash))
       return false;
     return true;
   }
@@ -80,6 +82,21 @@ trait MACComputer {
       throw new RuntimeException("Failed to compute hash because base64 failed.");
 
     return $hash;
+  }
+}
+
+
+// NOTE: function exists seems to consider the namespace, meaning we always define this.
+if(!function_exists('hash_equals')) {
+  function hash_equals($str1, $str2) {
+    if(strlen($str1) != strlen($str2)) {
+      return false;
+    } else {
+      $res = $str1 ^ $str2;
+      $ret = 0;
+      for($i = strlen($res) - 1; $i >= 0; $i--) $ret |= ord($res[$i]);
+      return !$ret;
+    }
   }
 }
 ?>

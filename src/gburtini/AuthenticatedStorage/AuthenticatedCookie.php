@@ -1,7 +1,6 @@
 <?php
 namespace gburtini\AuthenticatedStorage;
 
-require_once dirname(__FILE__) . "/MACComputer.php";
 class AuthenticatedCookie {
   use MACComputer;
 
@@ -44,8 +43,8 @@ class AuthenticatedCookie {
   }
 
   protected function readCookie() {
-    if(isset($_COOKIE[$name])) {
-      $cookie = $_COOKIE[$name];
+    if(isset($_COOKIE[$this->name])) {
+      $cookie = $_COOKIE[$this->name];
 
       if(strlen($cookie) <= 64)   // nothing to read here, its not a valid cookie.
         return false;
@@ -55,14 +54,14 @@ class AuthenticatedCookie {
 
       $message = $this->readMessage($message, $hash);
       $this->value = $message;
-    }
+    } else { $this->value = null; }
   }
 
   protected function updateCookie() {
     $prepared = $this->prepareMessage($this->value);
 
     // TODO: take in all the other parameters somewhere for this.
-    setcookie($name, $prepared['hash'] . $prepared['message'], $this->computeExpiration(), "/");
+    setcookie($this->name, $prepared['hash'] . $prepared['message'], $this->computeExpiration(), "/");
   }
 
   public function __toString() {
@@ -71,18 +70,5 @@ class AuthenticatedCookie {
 
   protected function computeExpiration() {
     return strtotime("+" . $this->expiration, time());
-  }
-}
-
-if(!function_exists('hash_equals')) {
-  function hash_equals($str1, $str2) {
-    if(strlen($str1) != strlen($str2)) {
-      return false;
-    } else {
-      $res = $str1 ^ $str2;
-      $ret = 0;
-      for($i = strlen($res) - 1; $i >= 0; $i--) $ret |= ord($res[$i]);
-      return !$ret;
-    }
   }
 }
