@@ -1,6 +1,6 @@
 <?php
 namespace gburtini\AuthenticatedStorage;
-
+use gburtini\AuthenticatedStorage\AuthenticatedCookie;
 /*
 * Disclaimer: I am not a cryptographer. I read OWASP regularly. I should not be advising cryptographic code at all. Please investigate this on your own prior to accepting the
 * implementation. This code comes with no warranty. You should read this in depth before implementing any authentication code: https://www.owasp.org/index.php/Authentication_Cheat_Sheet

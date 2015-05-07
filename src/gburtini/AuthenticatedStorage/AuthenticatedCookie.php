@@ -1,5 +1,7 @@
 <?php
+namespace gburtini\AuthenticatedStorage;
 
+require_once dirname(__FILE__) . "/MACComputer.php";
 class AuthenticatedCookie {
   use MACComputer;
 

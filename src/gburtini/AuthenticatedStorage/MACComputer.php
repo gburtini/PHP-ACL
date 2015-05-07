@@ -1,4 +1,5 @@
 <?php
+namespace gburtini\AuthenticatedStorage;
 /*
  * Provides tools to mixin MAC message storage functionality... note that if you want it
  * /encrypted/ in addition to validated you should override prepareCiphertext/Plaintext
