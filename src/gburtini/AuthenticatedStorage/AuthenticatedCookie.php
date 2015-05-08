@@ -34,7 +34,7 @@ class AuthenticatedCookie {
     $this->updateCookie();
   }
 
-  public function get($value) {
+  public function get() {
     return $this->value;
   }
 
