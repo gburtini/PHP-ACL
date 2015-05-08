@@ -46,11 +46,12 @@ class AuthenticatedCookie {
     if(isset($_COOKIE[$this->name])) {
       $cookie = $_COOKIE[$this->name];
 
-      if(strlen($cookie) <= 64)   // nothing to read here, its not a valid cookie.
+      // 88 = ceil(64 (simple hash length) / 3) * 4 for the base64 encoded hash size.
+      if(strlen($cookie) <= 88)   // nothing to read here, its not a valid cookie.
         return false;
 
-      $hash = substr($cookie, 0, 64);
-      $message = substr($cookie, 64);
+      $hash = substr($cookie, 0, 88);
+      $message = substr($cookie, 88);
 
       $message = $this->readMessage($message, $hash);
       $this->value = $message;
