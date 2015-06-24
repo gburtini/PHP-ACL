@@ -45,7 +45,7 @@ class AESAuthenticatedCookie extends AuthenticatedCookie {
        throw new RuntimeException("Cowardly refusing to decrypt when IV cannot be found.");
 
     $ciphertext_dec = substr($cipher, $iv_size);
-    $plaintext_dec = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $this->AES_SECRET_KEY, $ciphertext_dec, MCRYPT_MODE_CBC, $iv_dec);
+    $plaintext_dec = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $this->key_aes, $ciphertext_dec, MCRYPT_MODE_CBC, $iv_dec);
     if($plaintext_dec === false)
        throw new RuntimeException("Cowardly refusing to continue decryption when Rijndael failed.");
     $plaintext_dec = rtrim($plaintext_dec, "\0\4");	// this is scary, but mcrypt_encrypt padded with zeros.
