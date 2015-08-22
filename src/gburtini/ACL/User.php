@@ -30,7 +30,7 @@ class User {
   // The keys should be specified as secret/private site configuration and passed in here, the same for every request.
   // AES key is unnecessary if you have crypto off. For security reasons, it will throw an exception if crypto is on and it is unspecified.
   public function __construct($hmackey, $aeskey=null) {
-    if(ACL_USER_CRYPTO && ($aeskey === null)) // TODO: possibly check length of both keys here, ensure they are 'sufficient'.
+    if(ACL_USE_CRYPTO && ($aeskey === null)) // TODO: possibly check length of both keys here, ensure they are 'sufficient'.
         throw new Exception("Missing cryptographic key for AES.");
 
     if(!ACL_USE_CRYPTO) {
